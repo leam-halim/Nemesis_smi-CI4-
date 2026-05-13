@@ -1,7 +1,7 @@
-FROM php:8.2-apache
+FROM php:8.2-cli
 
-# 1. Install ekstensi PHP & library pendukung (Tanpa install-recommends untuk hindari bentrok)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# 1. Install ekstensi PHP & library pendukung
+RUN apt-get update && apt-get install -y \
     libicu-dev \
     libzip-dev \
     libpng-dev \
@@ -10,31 +10,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && docker-php-ext-install intl mysqli pdo_mysql zip gd \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 2. FIX PERMANEN: Hapus semua modul MPM selain prefork dari mods-enabled
-RUN find /etc/apache2/mods-enabled -name "mpm_*.load" -not -name "mpm_prefork.load" -delete \
-    && a2enmod mpm_prefork rewrite
-
-# 3. Ubah Document Root Apache ke folder /public
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
-
-# 4. Copy semua file project
+# 2. Copy semua file project
 COPY . /var/www/html
+WORKDIR /var/www/html
 
-# 5. Install composer dependencies
+# 3. Install composer dependencies
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 RUN composer install --no-dev --optimize-autoloader
 
-# 6. Set permission untuk folder writable
+# 4. Set permission untuk folder writable
 RUN chown -R www-data:www-data /var/www/html/writable && chmod -R 777 /var/www/html/writable
 
-# 7. Sesuaikan Port Apache (Railway dynamic port)
-RUN sed -i "s/Listen 80/Listen \${PORT}/g" /etc/apache2/ports.conf \
-    && sed -i "s/<VirtualHost \*:80>/<VirtualHost *:\${PORT}>/g" /etc/apache2/sites-available/000-default.conf
-
-# 8. Jalankan Apache
-CMD ["apache2-foreground"]
-
-
-
+# 5. Jalankan server bawaan CodeIgniter 4
+# Kita gunakan variable $PORT yang diberikan oleh Railway secara dinamis
+CMD ["sh", "-c", "php spark serve --host 0.0.0.0 --port ${PORT:-8080}"]
