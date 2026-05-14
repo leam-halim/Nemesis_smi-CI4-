@@ -200,5 +200,12 @@ class Database extends Config
         if (ENVIRONMENT === 'testing') {
             $this->defaultGroup = 'tests';
         }
+
+        // Pindahkan semua pembacaan env vars ke __construct():
+        $this->default['hostname'] = getenv('DB_HOST') ?: getenv('MYSQLHOST') ?: $this->default['hostname'];
+        $this->default['username'] = getenv('DB_USER') ?: getenv('MYSQLUSER') ?: $this->default['username'];
+        $this->default['password'] = getenv('DB_PASSWORD') ?: getenv('MYSQLPASSWORD') ?: $this->default['password'];
+        $this->default['database'] = getenv('DB_NAME') ?: getenv('MYSQLDATABASE') ?: $this->default['database'];
+        $this->default['port']     = getenv('DB_PORT') ?: getenv('MYSQLPORT') ?: $this->default['port'];
     }
 }
